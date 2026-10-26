@@ -1,0 +1,8 @@
+{
+  "name": "الإدارة الرقمية لروض الفرج",
+  "description": "منظومة الإدارة الرقمية لروض الفرج لمتابعة وإدارة 16 مدرسة والطلاب والمعلمين وأولياء الأمور والمراسلات والانضباط والحوكمة المدرسية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
