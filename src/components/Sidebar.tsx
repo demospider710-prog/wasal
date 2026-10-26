@@ -19,12 +19,16 @@ import {
   KeyRound,
   ShieldAlert,
   Settings,
-  ChevronLeft
+  ChevronLeft,
+  BookOpen,
+  Sparkles
 } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  onOpenUserGuide?: () => void;
+  onOpenTour?: () => void;
 }
 
 interface NavSectionItem {
@@ -35,7 +39,7 @@ interface NavSectionItem {
   badgeColor?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, onOpenUserGuide, onOpenTour }) => {
   const {
     activeSection,
     setActiveSection,
@@ -206,7 +210,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         </div>
 
         {/* Footer info within sidebar */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-center">
+        <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-center space-y-2">
+          <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+            <button
+              onClick={() => {
+                onOpenUserGuide?.();
+                if (window.innerWidth < 1024) setIsOpen(false);
+              }}
+              className="text-[11px] font-bold text-slate-300 hover:text-amber-400 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 rounded-lg py-1.5 px-2 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span>دليل المستخدم</span>
+            </button>
+            <button
+              onClick={() => {
+                onOpenTour?.();
+                if (window.innerWidth < 1024) setIsOpen(false);
+              }}
+              className="text-[11px] font-bold text-slate-300 hover:text-amber-400 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 rounded-lg py-1.5 px-2 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>جولة تعريفية</span>
+            </button>
+          </div>
           <div className="text-[11px] text-slate-400 font-medium">
             إدارة روض الفرج التعليمية
           </div>

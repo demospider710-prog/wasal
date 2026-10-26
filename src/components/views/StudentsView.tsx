@@ -24,6 +24,7 @@ import {
   LayoutGrid,
   List
 } from 'lucide-react';
+import { AcademicPeriodFilter, SortOrderOption } from '../common/AcademicPeriodFilter';
 
 export const StudentsView: React.FC = () => {
   const {
@@ -44,6 +45,14 @@ export const StudentsView: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
+  // Date-range and Academic Period Filter State
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [periodStartDate, setPeriodStartDate] = useState<string | undefined>();
+  const [periodEndDate, setPeriodEndDate] = useState<string | undefined>();
+  const [customStart, setCustomStart] = useState<string>('2026-09-01');
+  const [customEnd, setCustomEnd] = useState<string>('2026-10-31');
+  const [sortOrder, setSortOrder] = useState<SortOrderOption>('date_desc');
+
   const [formData, setFormData] = useState({
     internalCode: '',
     name: '',
@@ -62,8 +71,8 @@ export const StudentsView: React.FC = () => {
 
   const canManageStudents = ['super_admin', 'directorate_admin', 'school_principal', 'student_affairs'].includes(currentUser.role);
 
-  // Filter students based on permissions & school scoping & search
-  const visibleStudents = students.filter((student) => {
+  // Filter students based on permissions & school scoping & search & academic periods
+  const filteredStudents = students.filter((student) => {
     // Permission check
     if (!canViewStudent(currentUser, student)) return false;
 
@@ -82,7 +91,35 @@ export const StudentsView: React.FC = () => {
       (categoryFilter === 'top' && (student.generalAverage || 0) >= 95) ||
       (categoryFilter === 'attendance' && (student.attendanceRate || 0) >= 98);
 
-    return matchesSearch && matchesGrade && matchesCategory;
+    // Academic Period check
+    let matchesPeriod = true;
+    if (periodStartDate && periodEndDate) {
+      const studentDate = student.enrollmentDate || '2026-09-15';
+      matchesPeriod = studentDate >= periodStartDate && studentDate <= periodEndDate;
+    }
+
+    return matchesSearch && matchesGrade && matchesCategory && matchesPeriod;
+  });
+
+  // Sort according to sortOrder
+  const visibleStudents = [...filteredStudents].sort((a, b) => {
+    if (sortOrder === 'date_desc') {
+      const dateA = a.enrollmentDate || '2026-09-15';
+      const dateB = b.enrollmentDate || '2026-09-15';
+      return dateB.localeCompare(dateA);
+    }
+    if (sortOrder === 'date_asc') {
+      const dateA = a.enrollmentDate || '2026-09-15';
+      const dateB = b.enrollmentDate || '2026-09-15';
+      return dateA.localeCompare(dateB);
+    }
+    if (sortOrder === 'score_desc') {
+      return (b.generalAverage || 0) - (a.generalAverage || 0);
+    }
+    if (sortOrder === 'name_asc') {
+      return a.name.localeCompare(b.name, 'ar');
+    }
+    return 0;
   });
 
   const handleSaveAdd = (e: React.FormEvent) => {
@@ -257,6 +294,28 @@ export const StudentsView: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Date Range and Academic Period Filter */}
+      <AcademicPeriodFilter
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={(periodId, start, end) => {
+          setSelectedPeriod(periodId);
+          setPeriodStartDate(start);
+          setPeriodEndDate(end);
+        }}
+        customStartDate={customStart}
+        customEndDate={customEnd}
+        onCustomDatesChange={(s, e) => {
+          setCustomStart(s);
+          setCustomEnd(e);
+        }}
+        sortOrder={sortOrder}
+        onSortOrderChange={setSortOrder}
+        scoreSortLabel="الأعلى معدلاً تراكمياً"
+        dateSortLabel="تاريخ القيد الأكاديمي"
+        filteredCount={visibleStudents.length}
+        totalCount={students.length}
+      />
 
       {/* Main Content: Cards View or Table View */}
       {viewMode === 'cards' ? (

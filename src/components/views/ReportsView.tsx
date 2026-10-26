@@ -12,8 +12,13 @@ import {
   MessageSquareWarning,
   Award,
   TrendingUp,
-  CheckCircle2
+  CheckCircle2,
+  FileSpreadsheet,
+  FileText,
+  Maximize2,
+  BookOpen
 } from 'lucide-react';
+import { exportToExcel, exportToPDF } from '../../utils/export-utils';
 
 export const ReportsView: React.FC = () => {
   const {
@@ -25,7 +30,10 @@ export const ReportsView: React.FC = () => {
     correspondence,
     complaints,
     futureLeaders,
-    exportDatabaseJSON
+    exportDatabaseJSON,
+    addToast,
+    toggleFocusMode,
+    isFocusMode
   } = useRodFarag();
 
   const [activeReportTab, setActiveReportTab] = useState<'schools' | 'attendance' | 'assessments' | 'correspondence'>('schools');
@@ -34,6 +42,84 @@ export const ReportsView: React.FC = () => {
   const totalTeachers = schools.reduce((acc, s) => acc + (s.teachersCount || 0), 0);
   const totalClasses = schools.reduce((acc, s) => acc + (s.classesCount || 0), 0);
   const overdueCount = correspondence.filter(c => c.status === 'overdue').length;
+
+  const handleExportExcel = () => {
+    if (activeReportTab === 'schools') {
+      const headers = ['كود المدرسة', 'اسم المدرسة', 'المرحلة الدراسية', 'مدير المدرسة', 'عدد الطلاب', 'عدد المعلمين', 'عدد الفصول', 'متوسط الكثافة', 'حالة الاعتماد'];
+      const rows = schools.map(s => [
+        s.code,
+        s.name,
+        s.stageNameAr,
+        s.principalName,
+        s.studentsCount,
+        s.teachersCount,
+        s.classesCount,
+        Math.round(s.studentsCount / s.classesCount),
+        s.accreditationStatus === 'accredited' ? 'معتمدة' : 'قيد الاعتماد'
+      ]);
+      const stats = [
+        { label: 'إجمالي المدارس', value: '16 مدرسة' },
+        { label: 'إجمالي الطلاب المقيدين', value: totalRegisteredStudents },
+        { label: 'إجمالي المعلمين', value: totalTeachers },
+        { label: 'إجمالي الفصول', value: totalClasses }
+      ];
+      exportToExcel('تقرير_مدارس_روض_الفرج', 'بيان المدارس والكثافات والإحصائيات التجميعية', headers, rows, stats);
+      addToast('تم تصدير تقرير المدارس بصيغة Excel بنجاح', 'success');
+    } else if (activeReportTab === 'attendance') {
+      const headers = ['التاريخ', 'اسم المدرسة', 'المرحلة والفصل', 'قوة الفصل', 'عدد الحاضرين', 'عدد الغائبين', 'نسبة الحضور %'];
+      const rows = attendance.map(a => [
+        a.date,
+        a.schoolName,
+        `${a.grade} (${a.classroom})`,
+        a.totalStudents,
+        a.presentCount,
+        a.absentCount,
+        `${Math.round((a.presentCount / a.totalStudents) * 100)}%`
+      ]);
+      const stats = [
+        { label: 'متوسط الحضور العام', value: '96.8%' },
+        { label: 'إجمالي السجلات المرصودة', value: attendance.length }
+      ];
+      exportToExcel('تقرير_الحضور_والانضباط_روض_الفرج', 'بيان نسب حضور وانضباط الطلاب اليومي', headers, rows, stats);
+      addToast('تم تصدير تقرير الحضور والانضباط بصيغة Excel بنجاح', 'success');
+    } else if (activeReportTab === 'assessments') {
+      const headers = ['اسم التقييم', 'المادة الدراسية', 'المدرسة', 'الدرجة العظمى', 'متوسط الدرجات', 'حالة الاعتماد', 'المسؤول المعتمد'];
+      const rows = assessments.map(asm => [
+        asm.title,
+        asm.subject,
+        asm.schoolName,
+        asm.maxScore,
+        asm.averageScore || '—',
+        asm.status === 'published' ? 'منشور ومعتمد' : 'معتمد',
+        asm.approvedBy || '—'
+      ]);
+      exportToExcel('تقرير_التقييمات_والامتحانات', 'مؤشرات نتائج تقييمات شهر أكتوبر ونوفمبر', headers, rows);
+      addToast('تم تصدير تقرير التقييمات بصيغة Excel بنجاح', 'success');
+    } else if (activeReportTab === 'correspondence') {
+      const headers = ['رقم الصادر', 'الموضوع والتوجيه', 'تاريخ الصدور', 'الموعد الأقصى', 'الحالة'];
+      const rows = correspondence.map(c => [
+        c.outwardNumber,
+        c.subject,
+        c.date,
+        c.deadlineDate,
+        c.status === 'overdue' ? 'متأخرة عن الموعد' : 'في الموعد المحدد'
+      ]);
+      const stats = [
+        { label: 'إجمالي المكاتبات الصادرة', value: correspondence.length },
+        { label: 'المتأخرة عن الموعد', value: overdueCount },
+        { label: 'نسبة الاستجابة في الموعد', value: `${Math.round(((correspondence.length - overdueCount) / correspondence.length) * 100)}%` }
+      ];
+      exportToExcel('تقرير_المراسلات_والمكاتبات', 'كفاءة تداول المراسلات والمكاتبات الرسمية', headers, rows, stats);
+      addToast('تم تصدير تقرير المراسلات بصيغة Excel بنجاح', 'success');
+    }
+  };
+
+  const handleExportPDF = () => {
+    addToast('جاري تجهيز تقرير PDF الرسمي للطباعة والحفظ الرقمي...', 'info');
+    setTimeout(() => {
+      exportToPDF('التقرير الإحصائي', 'إدارة روض الفرج التعليمية');
+    }, 200);
+  };
 
   return (
     <div className="space-y-5">
@@ -53,20 +139,60 @@ export const ReportsView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Export Data Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export to Excel */}
+          <button
+            onClick={handleExportExcel}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer"
+            title="تحميل المقاييس الحالية كملف Excel (.csv)"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>تصدير Excel (.xlsx)</span>
+          </button>
+
+          {/* Export to PDF */}
+          <button
+            onClick={handleExportPDF}
+            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer"
+            title="تحميل التقرير كملف PDF رسمي"
+          >
+            <FileText className="w-4 h-4" />
+            <span>تصدير PDF</span>
+          </button>
+
+          {/* Print */}
           <button
             onClick={() => window.print()}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl shadow transition-all flex items-center gap-1.5"
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer"
+            title="طباعة التقرير"
           >
             <Printer className="w-4 h-4 text-amber-400" />
-            <span>طباعة التقرير</span>
+            <span className="hidden sm:inline">طباعة</span>
           </button>
+
+          {/* Focus / Reader Mode */}
+          <button
+            onClick={toggleFocusMode}
+            className={`px-3 py-2 font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer ${
+              isFocusMode
+                ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30'
+            }`}
+            title="تفعيل وضع القراءة والتركيز لتوسيع مساحة الشاشة وإخفاء القوائم (Alt + F)"
+          >
+            <Maximize2 className="w-4 h-4 text-amber-400" />
+            <span className="hidden sm:inline">{isFocusMode ? 'وضع القراءة نشط' : 'وضع القراءة'}</span>
+            <span className="text-[9px] font-mono opacity-80">Alt+F</span>
+          </button>
+
+          {/* JSON Backup */}
           <button
             onClick={exportDatabaseJSON}
-            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5"
+            className="px-2.5 py-2 bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-750 text-xs rounded-xl transition-all cursor-pointer"
+            title="تصدير قاعدة البيانات بالكامل بصيغة JSON"
           >
             <Download className="w-4 h-4" />
-            <span>تصدير البيانات (JSON)</span>
           </button>
         </div>
       </div>

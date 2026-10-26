@@ -104,6 +104,7 @@ export interface Student {
   studentRank?: string;
   status: 'enrolled' | 'transferred' | 'graduated';
   birthDate: string;
+  enrollmentDate?: string;
   emergencyContact: string;
   achievementsCount: number;
   academicSubjects?: { subject: string; score: number; maxScore: number; grade: string }[];

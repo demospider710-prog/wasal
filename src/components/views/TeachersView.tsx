@@ -15,12 +15,21 @@ import {
   CheckCircle,
   X
 } from 'lucide-react';
+import { AcademicPeriodFilter, SortOrderOption } from '../common/AcademicPeriodFilter';
 
 export const TeachersView: React.FC = () => {
   const { teachers, schools, currentUser, addTeacher, selectedSchoolFilter } = useRodFarag();
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Date-range and Academic Period Filter State
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [periodStartDate, setPeriodStartDate] = useState<string | undefined>();
+  const [periodEndDate, setPeriodEndDate] = useState<string | undefined>();
+  const [customStart, setCustomStart] = useState<string>('2020-01-01');
+  const [customEnd, setCustomEnd] = useState<string>('2026-10-31');
+  const [sortOrder, setSortOrder] = useState<SortOrderOption>('date_desc');
 
   const [formData, setFormData] = useState({
     internalCode: '',
@@ -49,7 +58,30 @@ export const TeachersView: React.FC = () => {
       t.subject.toLowerCase().includes(search.toLowerCase());
 
     const matchesSubject = subjectFilter === 'all' || t.subject.includes(subjectFilter);
-    return matchesSearch && matchesSubject;
+
+    // Academic Period / Date Range check on hireDate
+    let matchesPeriod = true;
+    if (periodStartDate && periodEndDate) {
+      matchesPeriod = t.hireDate >= periodStartDate && t.hireDate <= periodEndDate;
+    }
+
+    return matchesSearch && matchesSubject && matchesPeriod;
+  });
+
+  const sortedTeachers = [...filteredTeachers].sort((a, b) => {
+    if (sortOrder === 'date_desc') {
+      return b.hireDate.localeCompare(a.hireDate);
+    }
+    if (sortOrder === 'date_asc') {
+      return a.hireDate.localeCompare(b.hireDate);
+    }
+    if (sortOrder === 'score_desc') {
+      return b.evaluationScore - a.evaluationScore;
+    }
+    if (sortOrder === 'name_asc') {
+      return a.name.localeCompare(b.name, 'ar');
+    }
+    return 0;
   });
 
   const handleSaveAdd = (e: React.FormEvent) => {
@@ -157,6 +189,28 @@ export const TeachersView: React.FC = () => {
         </div>
       </div>
 
+      {/* Date Range and Academic Period Filter */}
+      <AcademicPeriodFilter
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={(periodId, start, end) => {
+          setSelectedPeriod(periodId);
+          setPeriodStartDate(start);
+          setPeriodEndDate(end);
+        }}
+        customStartDate={customStart}
+        customEndDate={customEnd}
+        onCustomDatesChange={(s, e) => {
+          setCustomStart(s);
+          setCustomEnd(e);
+        }}
+        sortOrder={sortOrder}
+        onSortOrderChange={setSortOrder}
+        scoreSortLabel="الأعلى تقييماً ودرجات"
+        dateSortLabel="تاريخ التعيين والتعاقد"
+        filteredCount={sortedTeachers.length}
+        totalCount={teachers.length}
+      />
+
       {/* Teachers Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -167,6 +221,7 @@ export const TeachersView: React.FC = () => {
                 <th className="p-3.5">اسم المعلم</th>
                 <th className="p-3.5">المدرسة التابع لها</th>
                 <th className="p-3.5">التخصص والمادة</th>
+                <th className="p-3.5">تاريخ التعيين</th>
                 <th className="p-3.5">الفصول المسندة</th>
                 <th className="p-3.5">بيانات التواصل</th>
                 <th className="p-3.5">تقييم الكفاءة</th>
@@ -174,12 +229,13 @@ export const TeachersView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800 text-slate-300">
-              {filteredTeachers.map((t) => (
+              {sortedTeachers.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-850/60 transition-colors">
                   <td className="p-3.5 font-mono text-amber-400 font-bold">{t.internalCode}</td>
                   <td className="p-3.5 font-bold text-white">{t.name}</td>
                   <td className="p-3.5 text-slate-300">{t.schoolName}</td>
                   <td className="p-3.5 text-amber-300 font-medium">{t.subject}</td>
+                  <td className="p-3.5 font-mono text-[11px] text-slate-400">{t.hireDate}</td>
                   <td className="p-3.5">
                     <div className="flex flex-wrap gap-1">
                       {t.assignedClasses.map((cls, idx) => (
@@ -205,9 +261,9 @@ export const TeachersView: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {filteredTeachers.length === 0 && (
+              {sortedTeachers.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
                     لا يوجد معلمين مطابقين للبحث أو نطاق المدرسة المحدد
                   </td>
                 </tr>

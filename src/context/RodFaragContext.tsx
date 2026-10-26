@@ -59,6 +59,12 @@ import {
   createSchoolAdditionRequest
 } from '../utils/registration-logic';
 
+import {
+  sendDesktopNotification,
+  requestDesktopNotificationPermission,
+  getDesktopNotificationPermission
+} from '../utils/desktopNotifications';
+
 export type SectionKey =
   | 'dashboard'
   | 'schools'
@@ -182,6 +188,21 @@ interface RodFaragContextType {
   schoolAdditionRequests: SchoolAdditionRequest[];
   addSchoolAdditionRequest: (data: Omit<SchoolAdditionRequest, 'id' | 'trackingNumber' | 'createdAt' | 'status'>) => SchoolAdditionRequest;
   registerUserAccount: (payload: RegistrationPayload) => { success: boolean; user?: UserProfile; errors?: string[] };
+
+  // Reader / Focus Mode (وضع القراءة والتركيز)
+  isFocusMode: boolean;
+  setIsFocusMode: (val: boolean) => void;
+  readerFontSize: 'normal' | 'large' | 'xlarge' | 'huge';
+  setReaderFontSize: (val: 'normal' | 'large' | 'xlarge' | 'huge') => void;
+  readerTheme: 'slate' | 'sepia' | 'contrast';
+  setReaderTheme: (theme: 'slate' | 'sepia' | 'contrast') => void;
+  toggleFocusMode: () => void;
+
+  // Desktop Notifications (Browser Notifications API)
+  desktopNotificationsEnabled: boolean;
+  desktopPermissionStatus: NotificationPermission | 'unsupported';
+  toggleDesktopNotifications: () => Promise<boolean>;
+  testDesktopNotification: () => void;
 
   // Toasts
   toasts: ToastMessage[];
@@ -371,6 +392,91 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
+  // Reader / Focus Mode state (وضع القراءة والتركيز)
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const [readerFontSize, setReaderFontSize] = useState<'normal' | 'large' | 'xlarge' | 'huge'>('normal');
+  const [readerTheme, setReaderTheme] = useState<'slate' | 'sepia' | 'contrast'>('slate');
+
+  const toggleFocusMode = () => {
+    setIsFocusMode(prev => {
+      const next = !prev;
+      addToast(next ? 'تم تفعيل وضع القراءة والتركيز (Alt + F)' : 'تم إلغاء وضع القراءة والعودة للعرض القياسي', 'info');
+      return next;
+    });
+  };
+
+  // Desktop Notifications state & handlers (Browser Notifications API)
+  const [desktopPermissionStatus, setDesktopPermissionStatus] = useState<NotificationPermission | 'unsupported'>(() => {
+    return getDesktopNotificationPermission();
+  });
+  const [desktopNotificationsEnabled, setDesktopNotificationsEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`${STORAGE_PREFIX}desktop_notifs_enabled`) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleDesktopNotifications = async (): Promise<boolean> => {
+    const currentPermission = getDesktopNotificationPermission();
+    if (currentPermission === 'unsupported') {
+      addToast('متصفحك الحالي لا يدعم إشعارات سطح المكتب (Notifications API)', 'warning');
+      return false;
+    }
+
+    if (currentPermission !== 'granted') {
+      const newPermission = await requestDesktopNotificationPermission();
+      setDesktopPermissionStatus(newPermission);
+      if (newPermission === 'granted') {
+        setDesktopNotificationsEnabled(true);
+        try {
+          localStorage.setItem(`${STORAGE_PREFIX}desktop_notifs_enabled`, 'true');
+        } catch {}
+        addToast('تم تفعيل إشعارات سطح المكتب بنجاح! ستصلك تنبيهات المراسلات الرسمية في الخلفية', 'success');
+        sendDesktopNotification({
+          title: 'إدارة روض الفرج التعليمية — تفعيل الإشعارات',
+          body: 'تم تفعيل إشعارات سطح المكتب بنجاح. ستصلك المراسلات والتنبيهات الإدارية الهامة فوراً.'
+        });
+        return true;
+      } else {
+        setDesktopNotificationsEnabled(false);
+        try {
+          localStorage.setItem(`${STORAGE_PREFIX}desktop_notifs_enabled`, 'false');
+        } catch {}
+        addToast('لم يتم منح إذن الإشعارات من إعدادات المتصفح', 'warning');
+        return false;
+      }
+    } else {
+      const nextState = !desktopNotificationsEnabled;
+      setDesktopNotificationsEnabled(nextState);
+      try {
+        localStorage.setItem(`${STORAGE_PREFIX}desktop_notifs_enabled`, String(nextState));
+      } catch {}
+      addToast(nextState ? 'تم تشغيل إشعارات سطح المكتب' : 'تم إيقاف إشعارات سطح المكتب مؤقتاً', 'info');
+      return nextState;
+    }
+  };
+
+  const testDesktopNotification = () => {
+    const perm = getDesktopNotificationPermission();
+    if (perm !== 'granted') {
+      toggleDesktopNotifications();
+      return;
+    }
+    const success = sendDesktopNotification({
+      title: 'إشعار رسمي تجريبي — إدارة روض الفرج',
+      body: 'هذا إشعار تجريبي لاختبار وصول التنبيهات المدرسية والمراسلات الرسمية في الخلفية بنجاح 🔔',
+      onClick: () => {
+        setActiveSection('correspondence');
+      }
+    });
+    if (success) {
+      addToast('تم إرسال إشعار تجريبي إلى سطح المكتب مع نغمة التنبيه', 'success');
+    } else {
+      addToast('تعذر إرسال الإشعار، يرجى مراجعة إعدادات أذونات المتصفح', 'warning');
+    }
+  };
+
   // Audit Log Helper
   const recordAudit = (action: string, targetResource: string, details: string) => {
     const log = createAuditLog(currentUser, action, targetResource, details);
@@ -516,6 +622,16 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     setCorrespondence(prev => [newItem, ...prev]);
     recordAudit('إصدار مراسلة إلكترونية رسمية', `Correspondence/${newId}`, `صادر رقم ${newItem.outwardNumber} - ${newItem.subject}`);
     addToast('تم إرسال المراسلة بنجاح إلى الجهات المعنية');
+
+    // Trigger Native Desktop Notification
+    sendDesktopNotification({
+      title: `مكاتبة رسمية واردة: ${newItem.subject}`,
+      body: `صادر رقم: ${newItem.outwardNumber} — موجهة إلى: ${Array.isArray(newItem.recipients) ? newItem.recipients.join('، ') : 'الجهات المعنية'}`,
+      tag: `cor-${newId}`,
+      onClick: () => {
+        setActiveSection('correspondence');
+      }
+    });
   };
 
   const updateCorrespondenceStatus = (id: string, newStatus: Correspondence['status']) => {
@@ -577,6 +693,16 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     setNotifications(prev => [newItem, ...prev]);
     recordAudit('بث إشعار / تهنئة', `Notification/${newId}`, `عنوان: ${newItem.title}`);
     addToast('تم بث الإشعار بنجاح في المنظومة');
+
+    // Trigger Native Desktop Notification
+    sendDesktopNotification({
+      title: `إشعار إداري عاجل: ${newItem.title}`,
+      body: newItem.message,
+      tag: `notif-${newId}`,
+      onClick: () => {
+        setActiveSection('notifications');
+      }
+    });
   };
 
   // Action: Discipline
@@ -872,7 +998,8 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
         generalAverage: 88,
         status: 'enrolled',
         emergencyContact: payload.parentPhone || payload.mobile,
-        achievementsCount: 0
+        achievementsCount: 0,
+        birthDate: '2010-01-01'
       };
       setStudents(prev => [newStudent, ...prev]);
     } else if (payload.category === 'parent') {
@@ -880,10 +1007,19 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
         id: `par-${Date.now()}`,
         name: payload.fullName,
         phone: payload.mobile,
-        nationalIdMasked: payload.nationalId ? `${payload.nationalId.slice(0, 3)}********${payload.nationalId.slice(-3)}` : undefined,
-        childrenIds: [payload.linkedStudentIdentifier || 'stu-101'],
-        childrenNames: ['الطالب التابع بالمنظومة'],
-        activeFollowUpsCount: 1
+        email: newUser.email,
+        nationalIdMasked: payload.nationalId ? `${payload.nationalId.slice(0, 3)}********${payload.nationalId.slice(-3)}` : '290********000',
+        linkedStudents: [
+          {
+            studentId: payload.linkedStudentIdentifier || 'stu-101',
+            studentName: 'الطالب التابع بالمنظومة',
+            schoolName: payload.schoolName || 'مدرسة روض الفرج',
+            grade: 'الصف الأول الثانوي',
+            classroom: '1/1'
+          }
+        ],
+        verified: true,
+        notes: 'مسجل حديثاً بالبوابة'
       };
       setParents(prev => [newParent, ...prev]);
     }
@@ -970,6 +1106,19 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     selectGovernorateAndDirectorate,
     isGovModalOpen,
     setIsGovModalOpen,
+    // Reader / Focus Mode
+    isFocusMode,
+    setIsFocusMode,
+    readerFontSize,
+    setReaderFontSize,
+    readerTheme,
+    setReaderTheme,
+    toggleFocusMode,
+    // Desktop Notifications
+    desktopNotificationsEnabled,
+    desktopPermissionStatus,
+    toggleDesktopNotifications,
+    testDesktopNotification,
     toasts,
     addToast,
     removeToast
@@ -988,6 +1137,11 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     activeDirectorate,
     availableDirectorates,
     isGovModalOpen,
+    isFocusMode,
+    readerFontSize,
+    readerTheme,
+    desktopNotificationsEnabled,
+    desktopPermissionStatus,
     schools,
     teachers,
     students,

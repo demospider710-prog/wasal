@@ -15,7 +15,8 @@ import {
   ShieldAlert,
   Printer,
   X,
-  FileText
+  FileText,
+  Maximize2
 } from 'lucide-react';
 
 export const CorrespondenceView: React.FC = () => {
@@ -26,7 +27,9 @@ export const CorrespondenceView: React.FC = () => {
     createCorrespondence,
     updateCorrespondenceStatus,
     replyToCorrespondence,
-    selectedSchoolFilter
+    selectedSchoolFilter,
+    toggleFocusMode,
+    isFocusMode
   } = useRodFarag();
 
   const [search, setSearch] = useState('');
@@ -121,25 +124,42 @@ export const CorrespondenceView: React.FC = () => {
           </div>
         </div>
 
-        {canCompose && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Reader / Focus Mode Button */}
           <button
-            onClick={() => {
-              setFormData({
-                outwardNumber: `${Math.floor(100 + Math.random() * 900)} / صادر تعليم 2026`,
-                subject: '',
-                content: '',
-                recipient: 'جميع المدارس الـ16 التابعة للإدارة',
-                confidentiality: 'normal',
-                deadlineDate: '2026-11-05'
-              });
-              setIsComposeModalOpen(true);
-            }}
-            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 self-start sm:self-auto"
+            onClick={toggleFocusMode}
+            className={`px-3 py-2 font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer ${
+              isFocusMode
+                ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30'
+            }`}
+            title="تفعيل وضع القراءة والتركيز لتوسيع مساحة الشاشة وقراءة المكاتبات بوضوح (Alt + F)"
           >
-            <Plus className="w-4 h-4" />
-            <span>إنشاء مكاتبة رسمية جديدة</span>
+            <Maximize2 className="w-4 h-4 text-amber-400" />
+            <span>{isFocusMode ? 'وضع القراءة نشط' : 'وضع القراءة والتركيز'}</span>
+            <span className="text-[9px] font-mono opacity-80">Alt+F</span>
           </button>
-        )}
+
+          {canCompose && (
+            <button
+              onClick={() => {
+                setFormData({
+                  outwardNumber: `${Math.floor(100 + Math.random() * 900)} / صادر تعليم 2026`,
+                  subject: '',
+                  content: '',
+                  recipient: 'جميع المدارس الـ16 التابعة للإدارة',
+                  confidentiality: 'normal',
+                  deadlineDate: '2026-11-05'
+                });
+                setIsComposeModalOpen(true);
+              }}
+              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>إنشاء مكاتبة رسمية جديدة</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -351,17 +371,30 @@ export const CorrespondenceView: React.FC = () => {
               )}
             </div>
 
-            <div className="p-3 bg-slate-850 border-t border-slate-800 flex justify-between">
-              <button
-                onClick={() => window.print()}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg flex items-center gap-1.5"
-              >
-                <Printer className="w-3.5 h-3.5 text-amber-400" />
-                <span>طباعة أمر التكليف</span>
-              </button>
+            <div className="p-3 bg-slate-850 border-t border-slate-800 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" />
+                  <span>طباعة أمر التكليف</span>
+                </button>
+                <button
+                  onClick={() => {
+                    toggleFocusMode();
+                    setSelectedItem(null);
+                  }}
+                  className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs rounded-lg flex items-center gap-1.5 cursor-pointer font-bold"
+                  title="الانتقال إلى وضع القراءة الكامل للشاشة"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>قراءة في وضع التركيز (Alt+F)</span>
+                </button>
+              </div>
               <button
                 onClick={() => setSelectedItem(null)}
-                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs cursor-pointer"
               >
                 إغلاق
               </button>

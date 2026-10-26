@@ -25,14 +25,19 @@ import {
   UserCheck,
   Layers,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Activity
 } from 'lucide-react';
+import { QuickActionsFloatingMenu } from '../dashboard/QuickActionsFloatingMenu';
+import { ActivityTimeline } from '../dashboard/ActivityTimeline';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 
 export const DashboardView: React.FC = () => {
   const {
     schools,
     teachers,
     students,
+    attendance,
     correspondence,
     complaints,
     discipline,
@@ -64,6 +69,30 @@ export const DashboardView: React.FC = () => {
   const pendingAssessments = assessments.filter(a => a.status === 'under_review').length;
 
   const currentSelectedGov = governorates.find(g => g.id === activeGovTab) || governorates[0];
+
+  // Real-time Active Attendance Calculation from actual attendance records:
+  const totalAttendanceRecorded = attendance.reduce((sum, a) => sum + (a.totalStudents || 0), 0);
+  const totalPresentRecorded = attendance.reduce((sum, a) => sum + (a.presentCount || 0), 0);
+  const totalAbsentRecorded = attendance.reduce((sum, a) => sum + (a.absentCount || 0), 0);
+  const totalExcusedRecorded = attendance.reduce((sum, a) => sum + (a.excusedCount || 0), 0);
+  const activeAttendancePercent = totalAttendanceRecorded > 0
+    ? ((totalPresentRecorded / totalAttendanceRecorded) * 100).toFixed(1)
+    : (students.length > 0 ? (students.reduce((sum, s) => sum + s.attendanceRate, 0) / students.length).toFixed(1) : '96.8');
+
+  // Real-time Complaints Calculation:
+  const pendingComplaintsCount = complaints.filter(c => ['new', 'under_review', 'info_requested'].includes(c.status)).length;
+  const newComplaintsToday = complaints.filter(c => c.status === 'new').length;
+  const resolvedComplaintsCount = complaints.filter(c => c.status === 'closed' || c.status === 'response_issued').length;
+
+  // Real-time Total Students:
+  const totalEnrolledStudents = students.length;
+  const highAchieversCount = students.filter(s => (s.generalAverage || 0) >= 90).length;
+
+  // Real-time Teachers:
+  const totalTeachersCount = teachers.length;
+  const avgTeacherScore = teachers.length > 0
+    ? (teachers.reduce((sum, t) => sum + t.evaluationScore, 0) / teachers.length).toFixed(1)
+    : '94.2';
 
   const regions: { id: string; label: string }[] = [
     { id: 'all', label: 'كافة المحافظات الـ27' },
@@ -131,77 +160,205 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main KPI Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Schools KPI */}
-        <div
-          onClick={() => setActiveSection('schools')}
-          className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 p-4 rounded-2xl cursor-pointer transition-all hover:shadow-lg group"
-        >
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold text-slate-300">المدارس المسجلة</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
-              <School className="w-4 h-4" />
-            </div>
+      {/* Real-Time Key Performance Indicators (KPIs) Section */}
+      <div className="space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+              <Activity className="w-5 h-5 text-amber-400" />
+              مؤشرات الأداء الرئيسية اللحظية (Real-Time Educational KPIs)
+            </h3>
           </div>
-          <div className="text-2xl font-black text-white mt-2">16 مدرسة</div>
-          <div className="text-[11px] text-amber-400/90 mt-1 flex items-center justify-between">
-            <span>جميع مدارس الإدارة تامة الربط</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              محدث لحظياً من قاعدة بيانات المنظومة
+            </span>
           </div>
         </div>
 
-        {/* Total Students KPI */}
-        <div
-          onClick={() => setActiveSection('students')}
-          className="bg-slate-900/90 border border-slate-800 hover:border-blue-500/50 p-4 rounded-2xl cursor-pointer transition-all hover:shadow-lg group"
-        >
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold text-slate-300">إجمالي الطلاب المقيدين</span>
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
-              <GraduationCap className="w-4 h-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* KPI 1: Active Attendance */}
+          <div
+            onClick={() => setActiveSection('attendance')}
+            className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800 hover:border-emerald-500/50 p-4.5 rounded-2xl cursor-pointer transition-all hover:shadow-xl hover:shadow-emerald-950/20 group relative overflow-hidden"
+          >
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <CalendarCheck className="w-4 h-4 text-emerald-400" />
+                نسبة الحضور النشط
+              </span>
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md font-mono">
+                Active Attendance
+              </span>
             </div>
-          </div>
-          <div className="text-2xl font-black text-white mt-2">{totalRegisteredStudents.toLocaleString('ar-EG')} طالب</div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
-            <span>في {totalClasses} فصلاً دراسياً</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </div>
-        </div>
 
-        {/* Total Teachers KPI */}
-        <div
-          onClick={() => setActiveSection('teachers')}
-          className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 p-4 rounded-2xl cursor-pointer transition-all hover:shadow-lg group"
-        >
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold text-slate-300">هيئة التدريس</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-              <Users className="w-4 h-4" />
+            <div className="mt-3 flex items-baseline justify-between">
+              <div className="text-3xl font-black text-emerald-400 tracking-tight font-mono">
+                {activeAttendancePercent}%
+              </div>
+              <div className="text-xs font-semibold text-slate-300">
+                {totalPresentRecorded} طالب حاضر
+              </div>
             </div>
-          </div>
-          <div className="text-2xl font-black text-white mt-2">{totalTeachers.toLocaleString('ar-EG')} معلم</div>
-          <div className="text-[11px] text-emerald-400 mt-1 flex items-center justify-between">
-            <span>تغطية بنسبة 98.4% للمناهج</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </div>
-        </div>
 
-        {/* Average Attendance KPI */}
-        <div
-          onClick={() => setActiveSection('attendance')}
-          className="bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 p-4 rounded-2xl cursor-pointer transition-all hover:shadow-lg group"
-        >
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold text-slate-300">متوسط الحضور اليومي</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-              <CalendarCheck className="w-4 h-4" />
+            {/* Attendance Progress Bar */}
+            <div className="w-full bg-slate-800 rounded-full h-2 mt-3 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(Number(activeAttendancePercent), 100)}%` }}
+              />
+            </div>
+
+            <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between pt-2 border-t border-slate-800/80">
+              <span className="text-slate-400">
+                غياب: <strong className="text-slate-300 font-mono">{totalAbsentRecorded}</strong> • بعذر:{' '}
+                <strong className="text-slate-300 font-mono">{totalExcusedRecorded}</strong>
+              </span>
+              <span className="text-emerald-400 font-bold flex items-center gap-0.5 group-hover:translate-x-[-2px] transition-transform">
+                <span>سجل الحضور</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </span>
             </div>
           </div>
-          <div className="text-2xl font-black text-emerald-400 mt-2">96.8%</div>
-          <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
-            <span>محدث اليوم • انتظام مرتفع</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
+
+          {/* KPI 2: Pending Complaints */}
+          <div
+            onClick={() => setActiveSection('complaints')}
+            className={`bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border p-4.5 rounded-2xl cursor-pointer transition-all hover:shadow-xl group relative overflow-hidden ${
+              pendingComplaintsCount > 0
+                ? 'border-amber-500/40 hover:border-amber-400 hover:shadow-amber-950/20'
+                : 'border-slate-800 hover:border-slate-700'
+            }`}
+          >
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <MessageSquareWarning className="w-4 h-4 text-amber-400" />
+                الشكاوى قيد المتابعة
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md font-mono ${
+                pendingComplaintsCount > 0
+                  ? 'text-amber-300 bg-amber-500/15 border border-amber-500/30'
+                  : 'text-slate-400 bg-slate-800'
+              }`}>
+                Pending Complaints
+              </span>
+            </div>
+
+            <div className="mt-3 flex items-baseline justify-between">
+              <div className="text-3xl font-black text-amber-400 tracking-tight font-mono">
+                {pendingComplaintsCount}{' '}
+                <span className="text-sm font-normal text-slate-400">شكوى</span>
+              </div>
+              <div className="text-xs font-semibold text-slate-300">
+                {newComplaintsToday} جديدة لم تعين
+              </div>
+            </div>
+
+            {/* Visual alert pill */}
+            <div className="mt-3 flex items-center gap-1.5 text-[11px] bg-slate-850 px-2.5 py-1.5 rounded-xl border border-slate-750">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+              <span className="text-amber-200/90 font-medium truncate">
+                {pendingComplaintsCount > 0
+                  ? 'تتطلب مراجعة مسؤول شؤون الطلاب'
+                  : 'جميع الشكاوى الواردة تمت معالجتها'}
+              </span>
+            </div>
+
+            <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between pt-2 border-t border-slate-800/80">
+              <span className="text-slate-400">
+                تم حلها: <strong className="text-emerald-400 font-mono">{resolvedComplaintsCount}</strong> شكوى
+              </span>
+              <span className="text-amber-400 font-bold flex items-center gap-0.5 group-hover:translate-x-[-2px] transition-transform">
+                <span>بوابة الشكاوى</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+
+          {/* KPI 3: Total Students */}
+          <div
+            onClick={() => setActiveSection('students')}
+            className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800 hover:border-blue-500/50 p-4.5 rounded-2xl cursor-pointer transition-all hover:shadow-xl hover:shadow-blue-950/20 group relative overflow-hidden"
+          >
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <GraduationCap className="w-4 h-4 text-blue-400" />
+                إجمالي الطلاب
+              </span>
+              <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md font-mono">
+                Total Students
+              </span>
+            </div>
+
+            <div className="mt-3 flex items-baseline justify-between">
+              <div className="text-3xl font-black text-white tracking-tight font-mono">
+                {totalEnrolledStudents}{' '}
+                <span className="text-xs font-normal text-slate-400">ملف مسجل</span>
+              </div>
+              <div className="text-xs font-semibold text-blue-300">
+                {totalRegisteredStudents.toLocaleString('ar-EG')} مقيد
+              </div>
+            </div>
+
+            {/* Visual breakdown badge */}
+            <div className="mt-3 flex items-center justify-between text-[11px] bg-slate-850 px-2.5 py-1.5 rounded-xl border border-slate-750">
+              <span className="text-slate-300">أوائل الإدارة (+90%):</span>
+              <span className="font-bold text-amber-400 font-mono">{highAchieversCount} طالب</span>
+            </div>
+
+            <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between pt-2 border-t border-slate-800/80">
+              <span className="text-slate-400">
+                في <strong className="text-slate-200 font-mono">{totalClasses}</strong> فصلاً دراسياً
+              </span>
+              <span className="text-blue-400 font-bold flex items-center gap-0.5 group-hover:translate-x-[-2px] transition-transform">
+                <span>شؤون الطلاب</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </div>
+
+          {/* KPI 4: Active Teaching Staff */}
+          <div
+            onClick={() => setActiveSection('teachers')}
+            className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800 hover:border-indigo-500/50 p-4.5 rounded-2xl cursor-pointer transition-all hover:shadow-xl hover:shadow-indigo-950/20 group relative overflow-hidden"
+          >
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-indigo-400" />
+                كادر المعلمين والكفاءة
+              </span>
+              <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-md font-mono">
+                Active Staff
+              </span>
+            </div>
+
+            <div className="mt-3 flex items-baseline justify-between">
+              <div className="text-3xl font-black text-white tracking-tight font-mono">
+                {totalTeachersCount}{' '}
+                <span className="text-xs font-normal text-slate-400">معلم</span>
+              </div>
+              <div className="text-xs font-semibold text-emerald-400 font-mono">
+                {avgTeacherScore}% كفاءة
+              </div>
+            </div>
+
+            {/* Performance status pill */}
+            <div className="mt-3 flex items-center justify-between text-[11px] bg-slate-850 px-2.5 py-1.5 rounded-xl border border-slate-750">
+              <span className="text-slate-300">تغطية الحصص والمناهج:</span>
+              <span className="font-bold text-emerald-400 font-mono">98.4% مكتمل</span>
+            </div>
+
+            <div className="text-[11px] text-slate-400 mt-2.5 flex items-center justify-between pt-2 border-t border-slate-800/80">
+              <span className="text-slate-400">
+                إجمالي الوظائف: <strong className="text-slate-200 font-mono">{totalTeachers}</strong>
+              </span>
+              <span className="text-indigo-400 font-bold flex items-center gap-0.5 group-hover:translate-x-[-2px] transition-transform">
+                <span>سجل المعلمين</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -628,42 +785,17 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Grid: Recent Official Audit Events & System Info */}
+      {/* Bottom Grid: Activity Timeline (Chronological actions, enrollments, updates) & System Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Recent Audit Trail */}
-        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h3 className="text-xs font-bold text-white flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-400" />
-              أحدث العمليات الإدارية وسجل التدقيق الفوري
-            </h3>
-            <button
-              onClick={() => setActiveSection('security_audit')}
-              className="text-[11px] text-amber-400 hover:underline"
-            >
-              سجل العمليات الكامل
-            </button>
-          </div>
-
-          <div className="divide-y divide-slate-800/80 mt-2">
-            {auditLogs.slice(0, 5).map((log) => (
-              <div key={log.id} className="py-2.5 text-right flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-xs font-bold text-slate-200">{log.action}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{log.details}</div>
-                  <div className="text-[10px] text-amber-400/80 font-mono mt-1">
-                    بواسطة: {log.actorName} • المورد: {log.targetResource}
-                  </div>
-                </div>
-                <div className="text-left shrink-0">
-                  <span className="text-[10px] text-slate-400 font-mono block">{log.timestamp}</span>
-                  <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono mt-1 inline-block">
-                    {log.integrityHash}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Activity Timeline Stream */}
+        <div className="lg:col-span-2">
+          <ErrorBoundary
+            componentName="ActivityTimeline"
+            fallbackTitle="سجل النشاط الزمني اللحظي"
+            fallbackMessage="جاري إعادة ضبط سجل الأنشطة والعمليات الزمنية. يمكنك الضغط على إعادة المحاولة."
+          >
+            <ActivityTimeline />
+          </ErrorBoundary>
         </div>
 
         {/* Future Leaders & Governance Callout */}
@@ -702,6 +834,9 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Quick Actions 1-Click Floating Menu */}
+      <QuickActionsFloatingMenu />
     </div>
   );
 };

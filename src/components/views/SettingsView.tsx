@@ -12,7 +12,9 @@ import {
   Phone,
   Calendar,
   Lock,
-  Layers
+  Layers,
+  BellRing,
+  Volume2
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -21,7 +23,11 @@ export const SettingsView: React.FC = () => {
     updateSettings,
     resetAllDemoData,
     exportDatabaseJSON,
-    currentUser
+    currentUser,
+    desktopNotificationsEnabled,
+    desktopPermissionStatus,
+    toggleDesktopNotifications,
+    testDesktopNotification
   } = useRodFarag();
 
   const [formData, setFormData] = useState({
@@ -160,13 +166,71 @@ export const SettingsView: React.FC = () => {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
+            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>حفظ إعدادات النظام</span>
           </button>
         </div>
       </form>
+
+      {/* Desktop Notifications Integration Section */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h3 className="font-bold text-sm text-white flex items-center gap-2">
+            <BellRing className="w-4 h-4 text-amber-400" />
+            إشعارات سطح المكتب والتنبيهات المباشرة (Desktop Notifications API)
+          </h3>
+          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+            desktopPermissionStatus === 'granted'
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+              : desktopPermissionStatus === 'denied'
+              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+          }`}>
+            {desktopPermissionStatus === 'granted'
+              ? 'صلاحية المتصفح: ممنوحة ومفعلة'
+              : desktopPermissionStatus === 'denied'
+              ? 'صلاحية المتصفح: محظورة'
+              : 'صلاحية المتصفح: بانتظار الإذن'}
+          </span>
+        </div>
+
+        <div className="bg-slate-850 p-4 rounded-xl text-xs space-y-3">
+          <p className="text-slate-300 leading-relaxed">
+            تتيح هذه المنظومة إرسال إشعارات رسمية فورية لسطح المكتب وعبر نظام التشغيل عند ورود مكاتبات صادرة جديدة، أو قرارات إدارية عاجلة، أو بلاغات انضباط حتى أثناء عمل المستخدم في تبويبات أو برامج أخرى.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={toggleDesktopNotifications}
+              className={`px-4 py-2 font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+                desktopPermissionStatus === 'granted' && desktopNotificationsEnabled
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+              }`}
+            >
+              <BellRing className="w-4 h-4" />
+              <span>
+                {desktopPermissionStatus === 'granted'
+                  ? (desktopNotificationsEnabled ? 'الإشعارات مفعلة (انقر للتعطيل المؤقت)' : 'تشغيل إشعارات سطح المكتب')
+                  : 'طلب إذن إشعارات المتصفح الآن'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={testDesktopNotification}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-bold rounded-xl flex items-center gap-2 cursor-pointer transition-colors"
+              title="تجربة إرسال إشعار فوري لسطح المكتب مع النغمة التنبيهية"
+            >
+              <Volume2 className="w-4 h-4 text-amber-400" />
+              <span>إرسال إشعار تجريبي ونغمة تنبيه 🔔</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Backup and Factory Reset Section */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
