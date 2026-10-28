@@ -45,7 +45,8 @@ const MainLayout: React.FC = () => {
     setIsFocusMode,
     readerFontSize,
     readerTheme,
-    toggleFocusMode
+    toggleFocusMode,
+    language
   } = useRodFarag();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [roleModalOpen, setRoleModalOpen] = useState(false);
@@ -176,8 +177,9 @@ const MainLayout: React.FC = () => {
     }
   };
 
-  const themeClasses = {
+  const themeClasses: Record<string, string> = {
     slate: 'bg-slate-950 text-slate-100',
+    light: 'bg-slate-100 text-slate-900',
     sepia: 'bg-[#181410] text-[#efe6d8]',
     contrast: 'bg-black text-white'
   };
@@ -190,7 +192,10 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen ${themeClasses[readerTheme]} flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-300`}>
+    <div
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+      className={`min-h-screen ${themeClasses[readerTheme]} flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-300`}
+    >
       {/* Top Header - hidden in Focus/Reader Mode */}
       {!isFocusMode && (
         <Header

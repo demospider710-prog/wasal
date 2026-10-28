@@ -49,8 +49,9 @@ export const FocusModeBar: React.FC<FocusModeBarProps> = ({ onExit }) => {
     { id: 'huge', label: 'أضخم (145%)', iconSize: 'text-lg font-black' }
   ];
 
-  const themes: { id: 'slate' | 'sepia' | 'contrast'; label: string; bgClass: string; dotClass: string }[] = [
+  const themes: { id: 'slate' | 'light' | 'sepia' | 'contrast'; label: string; bgClass: string; dotClass: string }[] = [
     { id: 'slate', label: 'داكن ليلي', bgClass: 'bg-slate-900 border-slate-700', dotClass: 'bg-slate-500' },
+    { id: 'light', label: 'فاتح نهاري', bgClass: 'bg-slate-100 border-slate-300', dotClass: 'bg-slate-400' },
     { id: 'sepia', label: 'ورق دافئ (سيبيا)', bgClass: 'bg-amber-950/60 border-amber-800/80', dotClass: 'bg-amber-500' },
     { id: 'contrast', label: 'عالي التباين', bgClass: 'bg-black border-white/40', dotClass: 'bg-white' }
   ];

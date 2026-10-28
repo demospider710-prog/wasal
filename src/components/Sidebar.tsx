@@ -47,7 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, onOpenUserG
     correspondence,
     complaints,
     discipline,
-    assessments
+    assessments,
+    t
   } = useRodFarag();
 
   const overdueCount = correspondence.filter(c => c.status === 'overdue').length;
@@ -57,65 +58,65 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, onOpenUserG
 
   const navGroups: { groupTitle: string; items: NavSectionItem[] }[] = [
     {
-      groupTitle: 'الإدارة والبيانات المدرسية',
+      groupTitle: t('nav_group_admin'),
       items: [
-        { key: 'dashboard', label: 'الرئيسية ولوحة الإحصائيات', icon: LayoutDashboard },
-        { key: 'schools', label: 'إدارة المدارس الـ16', icon: School, badge: schools.length },
-        { key: 'teachers', label: 'شؤون المدرسين', icon: Users },
-        { key: 'students', label: 'شؤون الطلاب', icon: GraduationCap },
-        { key: 'parents', label: 'بوابة أولياء الأمور', icon: UserCheck }
+        { key: 'dashboard', label: t('nav_dashboard'), icon: LayoutDashboard },
+        { key: 'schools', label: t('nav_schools'), icon: School, badge: schools.length },
+        { key: 'teachers', label: t('nav_teachers'), icon: Users },
+        { key: 'students', label: t('nav_students'), icon: GraduationCap },
+        { key: 'parents', label: t('nav_parents'), icon: UserCheck }
       ]
     },
     {
-      groupTitle: 'العمليات التعليمية والتقييم',
+      groupTitle: t('nav_group_learning'),
       items: [
-        { key: 'attendance', label: 'الحضور والغياب', icon: CalendarCheck },
+        { key: 'attendance', label: t('nav_attendance'), icon: CalendarCheck },
         {
           key: 'assessments',
-          label: 'الامتحانات والتقييمات',
+          label: t('nav_assessments'),
           icon: FileCheck2,
           badge: pendingAssessmentsCount > 0 ? pendingAssessmentsCount : undefined,
           badgeColor: 'bg-amber-600'
         },
         {
           key: 'correspondence',
-          label: 'المراسلات الإلكترونية',
+          label: t('nav_correspondence'),
           icon: Mail,
-          badge: overdueCount > 0 ? `${overdueCount} متأخر` : undefined,
+          badge: overdueCount > 0 ? `${overdueCount}` : undefined,
           badgeColor: 'bg-rose-600'
         },
-        { key: 'notifications', label: 'مركز الإشعارات والتهنئات', icon: BellRing }
+        { key: 'notifications', label: t('nav_notifications'), icon: BellRing }
       ]
     },
     {
-      groupTitle: 'الانضباط والحوكمة والابتكار',
+      groupTitle: t('nav_group_governance'),
       items: [
         {
           key: 'discipline',
-          label: 'الانضباط المدرسي والمخالفات',
+          label: t('nav_discipline'),
           icon: AlertTriangle,
           badge: pendingHearingsCount > 0 ? pendingHearingsCount : undefined,
           badgeColor: 'bg-amber-600'
         },
         {
           key: 'complaints',
-          label: 'الشكاوى والتظلمات',
+          label: t('nav_complaints'),
           icon: MessageSquareWarning,
           badge: openComplaintsCount > 0 ? openComplaintsCount : undefined,
           badgeColor: 'bg-blue-600'
         },
-        { key: 'governance', label: 'الحقوق والحوكمة المدرسية', icon: Scale },
-        { key: 'intellectual_property', label: 'الملكية الفكرية', icon: ShieldCheck },
-        { key: 'future_leaders', label: 'قادة المستقبل', icon: Award }
+        { key: 'governance', label: t('nav_governance'), icon: Scale },
+        { key: 'intellectual_property', label: t('nav_intellectual_property'), icon: ShieldCheck },
+        { key: 'future_leaders', label: t('nav_future_leaders'), icon: Award }
       ]
     },
     {
-      groupTitle: 'التقارير والأمان والنظام',
+      groupTitle: t('nav_group_system'),
       items: [
-        { key: 'reports', label: 'التقارير والإحصائيات', icon: BarChart3 },
-        { key: 'users_roles', label: 'المستخدمون والصلاحيات', icon: KeyRound },
-        { key: 'security_audit', label: 'الأمان وسجل العمليات', icon: ShieldAlert },
-        { key: 'settings', label: 'إعدادات النظام', icon: Settings }
+        { key: 'reports', label: t('nav_reports'), icon: BarChart3 },
+        { key: 'users_roles', label: t('nav_users_roles'), icon: KeyRound },
+        { key: 'security_audit', label: t('nav_security_audit'), icon: ShieldAlert },
+        { key: 'settings', label: t('nav_settings'), icon: Settings }
       ]
     }
   ];

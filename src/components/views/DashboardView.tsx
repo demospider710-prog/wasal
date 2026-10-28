@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { QuickActionsFloatingMenu } from '../dashboard/QuickActionsFloatingMenu';
 import { ActivityTimeline } from '../dashboard/ActivityTimeline';
+import { AcademicCalendar } from '../dashboard/AcademicCalendar';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 
 export const DashboardView: React.FC = () => {
@@ -784,6 +785,15 @@ export const DashboardView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Official Academic Calendar & Events Schedule */}
+      <ErrorBoundary
+        componentName="AcademicCalendar"
+        fallbackTitle="التقويم التعليمي والفعاليات المدرسية"
+        fallbackMessage="جاري إعادة ضبط التقويم التعليمي والفعاليات. يمكنك الضغط على إعادة المحاولة."
+      >
+        <AcademicCalendar />
+      </ErrorBoundary>
 
       {/* Bottom Grid: Activity Timeline (Chronological actions, enrollments, updates) & System Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

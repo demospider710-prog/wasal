@@ -16,8 +16,11 @@ import {
   IntellectualPropertyAsset,
   FutureLeaderInitiative,
   AuditLogEntry,
-  SystemSettings
+  SystemSettings,
+  AcademicEvent
 } from '../types';
+import { Language, translate } from '../utils/translations';
+import { INITIAL_ACADEMIC_EVENTS } from '../data/academicEventsData';
 import {
   INITIAL_SCHOOLS,
   INITIAL_TEACHERS,
@@ -189,13 +192,15 @@ interface RodFaragContextType {
   addSchoolAdditionRequest: (data: Omit<SchoolAdditionRequest, 'id' | 'trackingNumber' | 'createdAt' | 'status'>) => SchoolAdditionRequest;
   registerUserAccount: (payload: RegistrationPayload) => { success: boolean; user?: UserProfile; errors?: string[] };
 
-  // Reader / Focus Mode (وضع القراءة والتركيز)
+  // Reader / Focus Mode & Dark Mode (المظهر ووضع القراءة)
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
   isFocusMode: boolean;
   setIsFocusMode: (val: boolean) => void;
   readerFontSize: 'normal' | 'large' | 'xlarge' | 'huge';
   setReaderFontSize: (val: 'normal' | 'large' | 'xlarge' | 'huge') => void;
-  readerTheme: 'slate' | 'sepia' | 'contrast';
-  setReaderTheme: (theme: 'slate' | 'sepia' | 'contrast') => void;
+  readerTheme: 'slate' | 'light' | 'sepia' | 'contrast';
+  setReaderTheme: (theme: 'slate' | 'light' | 'sepia' | 'contrast') => void;
   toggleFocusMode: () => void;
 
   // Desktop Notifications (Browser Notifications API)
@@ -203,6 +208,16 @@ interface RodFaragContextType {
   desktopPermissionStatus: NotificationPermission | 'unsupported';
   toggleDesktopNotifications: () => Promise<boolean>;
   testDesktopNotification: () => void;
+
+  // Localization (تعدد اللغات)
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  toggleLanguage: () => void;
+  t: (key: string, fallback?: string) => string;
+
+  // Academic Calendar & Events (التقويم والفعاليات المدرسية)
+  academicEvents: AcademicEvent[];
+  addAcademicEvent: (event: Omit<AcademicEvent, 'id'>) => void;
 
   // Toasts
   toasts: ToastMessage[];
@@ -392,10 +407,31 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // Reader / Focus Mode state (وضع القراءة والتركيز)
+  // Reader / Focus Mode & Dark Mode state (المظهر ووضع القراءة)
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
   const [readerFontSize, setReaderFontSize] = useState<'normal' | 'large' | 'xlarge' | 'huge'>('normal');
-  const [readerTheme, setReaderTheme] = useState<'slate' | 'sepia' | 'contrast'>('slate');
+  const [readerTheme, setReaderTheme] = useState<'slate' | 'light' | 'sepia' | 'contrast'>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_PREFIX}reader_theme`);
+      if (saved === 'slate' || saved === 'light' || saved === 'sepia' || saved === 'contrast') {
+        return saved as 'slate' | 'light' | 'sepia' | 'contrast';
+      }
+    } catch {}
+    return 'slate';
+  });
+
+  const isDarkMode = readerTheme !== 'light';
+
+  const toggleDarkMode = () => {
+    setReaderTheme(prev => {
+      const next = prev === 'light' ? 'slate' : 'light';
+      try {
+        localStorage.setItem(`${STORAGE_PREFIX}reader_theme`, next);
+      } catch {}
+      addToast(next === 'slate' ? 'تم تفعيل المظهر الداكن (Dark Mode)' : 'تم تفعيل المظهر الفاتح (Light Mode)', 'info');
+      return next;
+    });
+  };
 
   const toggleFocusMode = () => {
     setIsFocusMode(prev => {
@@ -475,6 +511,64 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     } else {
       addToast('تعذر إرسال الإشعار، يرجى مراجعة إعدادات أذونات المتصفح', 'warning');
     }
+  };
+
+  // Localization (تعدد اللغات: العربية والإنجليزية)
+  const [language, setLanguage] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_PREFIX}language`);
+      if (saved === 'en' || saved === 'ar') return saved;
+    } catch {}
+    return 'ar';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_PREFIX}language`, language);
+    } catch {}
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = language;
+    }
+  }, [language]);
+
+  const toggleLanguage = () => {
+    setLanguage(prev => {
+      const next = prev === 'ar' ? 'en' : 'ar';
+      addToast(next === 'en' ? 'Switched to English interface' : 'تم التحويل إلى الواجهة العربية', 'info');
+      return next;
+    });
+  };
+
+  const t = (key: string, fallback?: string): string => {
+    return translate(language, key, fallback);
+  };
+
+  // Academic Calendar & Events (التقويم والفعاليات المدرسية)
+  const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_PREFIX}academic_events`);
+      return saved ? JSON.parse(saved) : INITIAL_ACADEMIC_EVENTS;
+    } catch {
+      return INITIAL_ACADEMIC_EVENTS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_PREFIX}academic_events`, JSON.stringify(academicEvents));
+    } catch {}
+  }, [academicEvents]);
+
+  const addAcademicEvent = (eventData: Omit<AcademicEvent, 'id'>) => {
+    const newId = `evt-${Date.now()}`;
+    const newEvent: AcademicEvent = {
+      ...eventData,
+      id: newId
+    };
+    setAcademicEvents(prev => [newEvent, ...prev]);
+    recordAudit('إضافة فعالية بالتقويم الدراسي', `Event/${newId}`, `تمت جدولة: ${newEvent.title} بتاريخ ${newEvent.date}`);
+    addToast(language === 'ar' ? 'تمت إضافة الفعالية بنجاح إلى التقويم الأكاديمي' : 'Event added successfully to the academic calendar', 'success');
   };
 
   // Audit Log Helper
@@ -1106,7 +1200,9 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     selectGovernorateAndDirectorate,
     isGovModalOpen,
     setIsGovModalOpen,
-    // Reader / Focus Mode
+    // Reader / Focus Mode & Dark Mode
+    isDarkMode,
+    toggleDarkMode,
     isFocusMode,
     setIsFocusMode,
     readerFontSize,
@@ -1119,6 +1215,14 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     desktopPermissionStatus,
     toggleDesktopNotifications,
     testDesktopNotification,
+    // Localization (تعدد اللغات)
+    language,
+    setLanguage,
+    toggleLanguage,
+    t,
+    // Academic Calendar & Events
+    academicEvents,
+    addAcademicEvent,
     toasts,
     addToast,
     removeToast
@@ -1137,11 +1241,14 @@ export const RodFaragProvider: React.FC<{ children: ReactNode }> = ({ children }
     activeDirectorate,
     availableDirectorates,
     isGovModalOpen,
+    isDarkMode,
     isFocusMode,
     readerFontSize,
     readerTheme,
     desktopNotificationsEnabled,
     desktopPermissionStatus,
+    language,
+    academicEvents,
     schools,
     teachers,
     students,

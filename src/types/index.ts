@@ -324,3 +324,22 @@ export interface SystemSettings {
   directorateContactEmail: string;
   directoratePhone: string;
 }
+
+export type AcademicEventType = 'exam' | 'holiday' | 'milestone' | 'activity';
+
+export interface AcademicEvent {
+  id: string;
+  title: string;
+  titleEn?: string;
+  description: string;
+  descriptionEn?: string;
+  date: string; // YYYY-MM-DD
+  endDate?: string;
+  type: AcademicEventType;
+  targetAudience: 'all' | 'teachers' | 'students' | 'parents' | 'administrators';
+  targetAudienceEn?: string;
+  schoolId?: string; // specific school or undefined for all directorate schools
+  location?: string;
+  locationEn?: string;
+  isImportant?: boolean;
+}
